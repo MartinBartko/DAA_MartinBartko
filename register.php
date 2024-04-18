@@ -1,75 +1,68 @@
 <?php
-session_start(); // Start the session.
+session_start(); // Otvorenie session
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $servername = "localhost";
-    $username = "root";
-    $password = "";
-    $dbname = "dbloginbartko";
+// Kontrola, či boli odoslané údaje z formulára
+if (isset($_POST['register']) && !empty($_POST['username']) && !empty($_POST['password']) && !empty($_POST['confirm_password']) && !empty($_POST['email'])) {
+    // Kontrola zhodnosti hesiel
+    if ($_POST['password'] == $_POST['confirm_password']) {
+        // Connect string do DB
+        $servername = "localhost";
+        $username = "root";
+        $password = "";
+        $dbname = "bartkoeshop";
 
-    // Create connection
-    $conn = new mysqli($servername, $username, $password, $dbname);
+        // Create connection
+        $conn = new mysqli($servername, $username, $password, $dbname);
 
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
-
-    $user = mysqli_real_escape_string($conn, $_POST['username']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-
-    // Check if the user or email already exists
-    $checkUserSql = "SELECT * FROM t_user WHERE username = '$user' OR email = '$email'";
-    $result = $conn->query($checkUserSql);
-
-    $errorMessage = ""; // Initialize the error message variable
-
-    if ($result->num_rows > 0) {
-        $errorMessage = "Error: Username or Email already exists";
-    } else {
-        $pass = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hash the password.
-
-        $sql = "INSERT INTO t_user (username, password, email) VALUES ('$user', '$pass', '$email')";
-
-        if ($conn->query($sql) === TRUE) {
-            $conn->close(); // It's important to close the connection before redirection.
-            // Redirect to welcome.php
-            header("Location: welcome.php");
-            exit();
-        } else {
-            $errorMessage = "Error: " . $sql . "<br>" . $conn->error;
+        // Check connection
+        if ($conn->connect_error) {
+            die("Connection failed: " . $conn->connect_error);
         }
+
+        // Príprava SQL príkazu na vloženie nového používateľa
+        $sql = "INSERT INTO t_user (username, password, email) VALUES (?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT); // Hash hesla pred uložením
+        $stmt->bind_param("sss", $_POST['username'], $hashed_password, $_POST['email']);
+        
+        if ($stmt->execute()) {
+            echo "User registered successfully.";
+            // Tu môžeš presmerovať na prihlasovaciu stránku alebo kdekoľvek
+            // header("Location: login.php");
+            // exit();
+        } else {
+            echo "Error: " . $stmt->error;
+        }
+
+        $stmt->close();
+        $conn->close();
+    } else {
+        echo "Heslá sa nezhodujú.";
     }
-
-    $conn->close();
 }
-?>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Register Form</title>
-    <style>
-        body { background-color: #9370DB; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .register-form { text-align: center; background: white; padding: 20px; border-radius: 10px; width: 20%; min-width: 250px; }
-        h2 { color: #000; }
-        input[type="text"], input[type="password"], input[type="email"], input[type="submit"] { margin-bottom: 20px; display: block; width: calc(100% - 20px); padding: 10px; }
-        .error-message { color: red; margin-top: 20px; }
-    </style>
-</head>
-<body>
-    <div class="register-form">
-        <h2>REGISTER</h2>
-        <form action="" method="post">
-            <input type="text" name="username" placeholder="Username" required autofocus>
-            <input type="email" name="email" placeholder="Email" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <input type="submit" value="Register">
-            <a href="index.php" id="Login">Login</a>
-        </form>
-        <?php if (!empty($errorMessage)): ?>
-            <div class="error-message"><?php echo $errorMessage; ?></div>
-        <?php endif; ?>
-    </div>
-</body>
-</html>
+echo '<html>';
+echo '<head>';
+echo '<title>Registration Form</title>';
+echo '<style>';
+echo 'body { background-color: #9370DB; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }';
+echo '.login-form { text-align: center; background: white; padding: 20px; border-radius: 10px; width: 20%; min-width: 250px; }';
+echo 'h2 { color: #000; }';
+echo 'input[type="text"], input[type="password"], input[type="email"] { margin-bottom: 20px; display: block; width: calc(100% - 20px); padding: 10px; }';
+echo '</style>';
+echo '</head>';
+echo '<body>';
+echo '<div class="login-form">';
+echo '<h2>REGISTER</h2>';
+echo '<form action="register.php" method="post">';
+echo '<input type="text" name="username" placeholder="username" required autofocus>';
+echo '<input type="password" name="password" placeholder="password" required>';
+echo '<input type="password" name="confirm_password" placeholder="confirm password" required>';
+echo '<input type="email" name="email" placeholder="email" required>';
+echo '<a href="index.php" id="login">Login</a>';
+echo '<input type="submit" name="register" value="Register">';
+echo '</form>';
+echo '</div>';
+echo '</body>';
+echo '</html>';
+?>
